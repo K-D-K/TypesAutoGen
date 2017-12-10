@@ -4,7 +4,6 @@
     "generateTypes": "run-func src/main.js main"
   },
   "dependencies": {
-    "axios": "^0.17.1",
     "ramda": "^0.25.0",
     "readline": "^1.3.0"
   },

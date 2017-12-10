@@ -66,11 +66,21 @@ generateRemoteFunctions = (possibleApis,contentJson) => {
 	keys.forEach(key=>{
 		let text;
 		let respName = contentJson[key+"Resp"].response;
-		if(possibleApis[key]!="GET"){
-			text = Helper.initLow(key)+' :: '+key+'Req -> Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+' payload = withAPIResult unwrapResponse $ defaultCallAPI payload\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';
+		if(!possibleApis[key].query){
+			if(possibleApis[key].method!="GET"){
+				text = Helper.initLow(key)+' :: '+key+'Req -> Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+' payload = withAPIResult unwrapResponse $ defaultCallAPI payload\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';
+			}
+			else{
+				text = Helper.initLow(key)+' :: Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+'  = withAPIResult unwrapResponse $ defaultCallAPI '+key+'Req\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';
+			}
 		}
 		else{
-			text = Helper.initLow(key)+' :: Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+'  = withAPIResult unwrapResponse $ defaultCallAPI '+key+'Req\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';	
+			if(possibleApis[key].method!="GET"){
+				text = Helper.initLow(key)+' :: '+possibleApis[key].query.map(val => "String -> " )+key+'Req -> Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+' '+ possibleApis[key].query.map(val => Helper.initLow(val)+" " )+' payload = withAPIResult unwrapResponse $ defaultCallAPI ( '+name+'Request '+possibleApis[key].query.map(val => Helper.initLow(val)+" " ) +' ( '+name+'Req payload))\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';
+			}
+			else{
+				text = Helper.initLow(key)+' :: '+possibleApis[key].query.map(val => "String -> " )+' Flow (APIResult ('+respName+'))\n'+Helper.initLow(key)+' '+ possibleApis[key].query.map(val => Helper.initLow(val)+" " ) +'= withAPIResult unwrapResponse $ defaultCallAPI $ '+key +'Req '+ possibleApis[key].query.map(val => Helper.initLow(val)+" " ) +'\n\twhere unwrapResponse ('+key+'Resp {response: x}) = x';
+			}
 		}
 		remoteFunctions.push(text);
 	})

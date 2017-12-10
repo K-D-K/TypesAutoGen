@@ -1,6 +1,5 @@
 const fs = require('fs');
 const readline = require('readline');
-const axios = require('axios');
 const R = require("ramda");
 const apiCode = require('./generateRemoteFunctions.js')
 const Helper = require('./helper.js');
@@ -120,12 +119,41 @@ getPath = (apiData) => {
 	return path;
 }
 
+getQuery = (apiData) => {
+	let path = (R.path(["request","url","path"],apiData));
+	let query = (R.path(["request","url","query"],apiData));
+	if((!query)&&(path))
+		return undefined;
+	if(!query){
+		query = (R.path(["request","url"],apiData));
+		query = query.split("?")[1];
+		if(query){
+			let queryArray = [];
+			query = query.split("&");
+			query.forEach(val=>{
+				queryArray.push(val.split('=')[0]);
+			})
+			return queryArray;
+		}
+		else{
+			return undefined;
+		}
+	}
+	else{
+		let queryArray = [];
+		query.forEach(val => {
+			queryArray.push(val.key);
+		})
+		return queryArray;
+	}
+}
+
 getApiInstance = (apiData) => {
 	loadHeaders(R.path(["request","header"],apiData));
 	let name = apiData.name;
 	let method = R.path(["request","method"],apiData);
 	let path = getPath(apiData);
-	// let query = getQuery(apiData);
+	let query = getQuery(apiData);
 	if(name.length > 0)
 		name = Helper.initCap(name);
 	name = Helper.removeAllSpecialCharacters(name);
@@ -133,8 +161,26 @@ getApiInstance = (apiData) => {
 		console.log("Duplicate Api Call Name :",name,"....\n\n","Only One Api Call is consider among those duplicate calls");
 		return;
 	}
-	possibleApiCalls[name] = method;
-	let instance = 'instance make'+name+'Req :: RestEndpoint '+name+'Req '+name+'Resp where \n\tmakeRequest reqBody headers = defaultMakeRequest '+method+' (getBaseUrl <> "'+path+'") headers reqBody\n\tdecodeResponse body = defaultDecodeResponse body';
+	possibleApiCalls[name] = {method:method,query:query};
+	let instance = ""
+	if(query){
+		let params = "";
+		query.forEach(param=>{
+			params += ''+param+'="<>'+Helper.initLow(param)+'<>"&'
+		})
+		params = params.slice(0,params.length-4);
+		if(method==="GET")
+			instance = 'instance make'+name+'Req :: RestEndpoint '+name+'Req '+name+'Resp where \n\tmakeRequest reqBody@('+name+'Req '+query.map(val=>Helper.initLow(val)).join(' ')+') headers = defaultMakeRequest '+method+' (getBaseUrl <> "'+path+'?'+params+') headers reqBody\n\tdecodeResponse body = defaultDecodeResponse body';
+		else{
+			instance = 'instance make'+name+'Req :: RestEndpoint '+name+'Request '+name+'Resp where \n\tmakeRequest ('+name+'Request '+query.map(val=>Helper.initLow(val)).join(' ')+' payload) headers = defaultMakeRequest '+method+' (getBaseUrl <> "'+path+'?'+params+') headers payload\n\tdecodeResponse body = defaultDecodeResponse body';
+			let reqName = name+"Request"
+			let getReqInstance = 'data '+reqName+' = '+reqName+' '+query.map(val=>"String ").join(' ')+name+"Req";
+			typesObj.push(getReqInstance);
+			getTypesInstance(reqName);
+		}
+	}
+	else
+		instance = 'instance make'+name+'Req :: RestEndpoint '+name+'Req '+name+'Resp where \n\tmakeRequest reqBody headers = defaultMakeRequest '+method+' (getBaseUrl <> "'+path+'") headers reqBody\n\tdecodeResponse body = defaultDecodeResponse body';
 	instanceObj.push(instance);
 	getResponseObj(name,apiData.response);
 	if(method != "GET"){
@@ -143,7 +189,11 @@ getApiInstance = (apiData) => {
 	}
 	else{
 		let reqName = name+"Req";
-		let getReqInstance = 'data '+reqName+' = '+reqName;
+		let getReqInstance = '';
+		if(!query)
+			getReqInstance = 'data '+reqName+' = '+reqName;
+		else
+			getReqInstance = 'data '+reqName+' = '+reqName+' '+query.map(val=>"String ").join(' ');
 		typesObj.push(getReqInstance);
 		getTypesInstance(reqName);
 	}
