@@ -1,5 +1,9 @@
 # TypesAutoGen
 Types auto generation <br>
-npm i <br>
-npm run generateTypes "your postman collection path" "destination path to save files" (there is no need to create destination directory .. directory can be autogenrated ) <br>
-EX : npm run generateTypes "/Users/dharanikumarkdk/Desktop/Loyalty.postman_collection.json" "/Users/dharanikumarkdk/Desktop/sampleFolder"
+npm run generateTypes $0 $1 <br>
+$0 - Postman colletion path <br>
+$1 - Path to store generated type files (directory will be auto generated) <br>
+### Example
+```bash
+npm run generateTypes "/Users/dharanikumarkdk/Desktop/Loyalty.postman_collection.json" "/Users/dharanikumarkdk/Desktop/sampleFolder"
+```
